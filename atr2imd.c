@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <time.h>
 
 /* A loaded .ATR image */
@@ -66,34 +65,33 @@ int hd_map[] =
 
 /* Read .atr image */
 
-struct atr *read_atr(char *name, int force_ed, int force_dd)
+struct atr *read_atr(char *name, const int force_ed, const int force_dd)
 {
-	struct atr *atr;
 	FILE *f = fopen(name, "rb");
 	unsigned char header[16];
-	int sec_size; /* Sector size from header */
+	/* Sector size from header */
 	if (!f) {
 		fprintf(stderr, "Couldn't open %s\n", name);
-		return 0;
+		return nullptr;
 	}
 	if (1 != fread(header, 16, 1, f)) {
 		fprintf(stderr, "Header missing from %s\n", name);
 		fclose(f);
-		return 0;
+		return nullptr;
 	}
 	if (header[0] != 0x96 || header[1] != 0x02) {
 		fprintf(stderr, "Warning.. magic number is not 0x0296\n");
 	}
-	atr = (struct atr *)malloc(sizeof(struct atr));
-	atr->map = 0;
-	atr->data =0;
+	struct atr* atr = malloc(sizeof(struct atr));
+	atr->map = nullptr;
+	atr->data =nullptr;
 
 	/* Get image size from header */
 	atr->size = ((long)header[2] + ((long)header[3] << 8) + ((long)header[6] << 16)) * 0x10;
 
 
 	/* Get sector size from header */
-	sec_size = header[4] + (header[5] << 8);
+	const int sec_size = header[4] + (header[5] << 8);
 
 	/* Check sector size */
 	if (sec_size == 0x80)
@@ -104,7 +102,7 @@ struct atr *read_atr(char *name, int force_ed, int force_dd)
 		fprintf(stderr, "Unknown sector size %d\n", sec_size);
 		free_atr(atr);
 		fclose(f);
-		return 0;
+		return nullptr;
 	}
 
 	/* Get actual image size, don't trust size from header */
@@ -118,7 +116,7 @@ struct atr *read_atr(char *name, int force_ed, int force_dd)
 		fprintf(stderr, "Couldn't allocate space for image\n");
 		free_atr(atr);
 		fclose(f);
-		return 0;
+		return nullptr;
 	}
 
 	/* Read image */
@@ -126,14 +124,14 @@ struct atr *read_atr(char *name, int force_ed, int force_dd)
 		fprintf(stderr, "Error reading from file\n");
 		free_atr(atr);
 		fclose(f);
-		return 0;
+		return nullptr;
 	}
 	/* Success! */
 	fclose(f);
 
 	/* Deal with boot sectors */
 	if (sec_size == 256) {
-		if ((atr->size >> 7) & 1) {
+		if (atr->size >> 7 & 1) {
 			/* It has an odd number of 128 bytes chunks.. first
 			   three sectors are 128 bytes.  Expand image to make
 			   physical sectors. */
@@ -147,9 +145,8 @@ struct atr *read_atr(char *name, int force_ed, int force_dd)
 			memset(atr->data + 128, 0, 128);
 			atr->size += 384;
 		} else {
-			int x;
 			int flg = 0;
-			for (x = 384; x != 768; ++x)
+			for (int x = 384; x != 768; ++x)
 				if (atr->data[x])
 					flg = 1;
 			if (!flg) {
@@ -196,18 +193,17 @@ struct atr *read_atr(char *name, int force_ed, int force_dd)
 		fprintf(stderr,"Unknown format\n");
 		free(atr->data);
 		free(atr);
-		return 0;
+		return nullptr;
 	}
 	return atr;
 }
 
 /* True if all bytes are the same */
 
-int is_same(unsigned char *data, int len)
+int is_same(const unsigned char *data, const int len)
 {
-	int c = data[0];
-	int x;
-	for (x = 1; x != len; ++x)
+	const int c = data[0];
+	for (int x = 1; x != len; ++x)
 		if (data[x] != c)
 			return 0;
 	return 1;
@@ -215,16 +211,13 @@ int is_same(unsigned char *data, int len)
 
 /* Convert IMD file */
 
-int write_imd(struct atr *atr, char *dest_name, char *comment)
+int write_imd(const struct atr *atr, char *dest_name, char *comment)
 {
-	FILE *f;
-	time_t t = time(NULL);
-	struct tm *tm = localtime(&t);
-	int cyl;
-	int sect;
+	const time_t t = time(nullptr);
+	const struct tm *tm = localtime(&t);
 	int x;
 
-	f = fopen(dest_name, "rb");
+	FILE* f = fopen(dest_name, "rb");
 	if (f) {
 		char buf[80];
 		fclose(f);
@@ -252,7 +245,7 @@ int write_imd(struct atr *atr, char *dest_name, char *comment)
 	fprintf(f, "%s\n\x1a", comment);
 
 	/* Write tracks */
-	for (cyl = 0; cyl != atr->cyls; ++cyl) {
+	for (int cyl = 0; cyl != atr->cyls; ++cyl) {
 		if (atr->dd)
 			fputc(5, f); /* 250 Kbps MFM */
 		else
@@ -272,10 +265,8 @@ int write_imd(struct atr *atr, char *dest_name, char *comment)
 		/* Head map (empty) */
 		/* Sectors */
 		for (x = 0; x != atr->sects; ++x) {
-			int ofst;
-			int dbl = 0;
-			sect = atr->map[x] - 1;
-			ofst = atr->sec_size * (cyl * atr->sects + sect);
+			const int sect = atr->map[x] - 1;
+			const int ofst = atr->sec_size * (cyl * atr->sects + sect);
 			if (ofst >= atr->size) {
 				fputc(2, f);
 				fputc(~0, f);
@@ -283,19 +274,10 @@ int write_imd(struct atr *atr, char *dest_name, char *comment)
 				fputc(2, f);
 				fputc(~atr->data[ofst], f);
 			} else {
-				int y;
 				fputc(1, f);
-				if (dbl) {
-					for (y = 0; y != 128; ++y) {
-						fputc(~atr->data[ofst + y], f);
-					}
-					for (y = 0; y != 128; ++y) {
-						fputc(~0, f);
-					}
-				} else
-					for (y = 0; y != atr->sec_size; ++y) {
-						fputc(~atr->data[ofst + y], f);
-					}
+				for (int y = 0; y != atr->sec_size; ++y) {
+					fputc(~atr->data[ofst + y], f);
+				}
 			}
 		}
 	}
@@ -304,18 +286,19 @@ int write_imd(struct atr *atr, char *dest_name, char *comment)
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int main(const int argc, char *argv[])
 {
-	int x;
+	(void)argc;
+
 	int err = 0;
 	int did = 0;
-	char *comment = 0;
+	char *comment = nullptr;
 	int force_ed = 0;
 	int force_dd = 0;
 
 	/* Parse args */
 
-	for (x = 1; argv[x]; ++x) {
+	for (int x = 1; argv[x]; ++x) {
 		if (argv[x][0] == '-') {
 			/* Some kind of option */
 			if (!strcmp(argv[x], "--comment") && argv[x + 1])
@@ -353,7 +336,7 @@ int main(int argc, char *argv[])
 			}
 
 			/* Read .atr file */
-			if (!(atr = read_atr(source_name, force_ed, force_dd)))
+			if (!((atr = read_atr(source_name, force_ed, force_dd))))
 				return 1;
 
 			/* Write .imd file */
@@ -364,7 +347,7 @@ int main(int argc, char *argv[])
 			free_atr(atr);
 
 			/* Reset options */
-			comment = 0;
+			comment = nullptr;
 			did = 1;
 		}
 	}

@@ -21,8 +21,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <time.h>
 
 /* A track */
 
@@ -69,25 +67,21 @@ void free_imd(struct imd *imd)
 
 struct imd *read_imd(char *name)
 {
-	struct imd *imd;
-	struct track *track;
-	struct track *last;
 	char buf[1024];
-	int x;
 	int c;
 	FILE *f = fopen(name, "rb");
-	last = 0;
+	struct track* last = nullptr;
 
 	if (!f) {
 		fprintf(stderr, "Couldn't open %s\n", name);
-		return 0;
+		return nullptr;
 	}
 
 	printf("Converting %s\n", name);
 
 	/* Read header */
-	x = 0;
-	while ((c = fgetc(f)), (c != -1 && c != 0x1A)) {
+	size_t x = 0;
+	while (c = fgetc(f), c != -1 && c != 0x1A) {
 		if (x < sizeof(buf) - 1)
 			buf[x++] = c;
 	}
@@ -96,35 +90,34 @@ struct imd *read_imd(char *name)
 	if (!x) {
 		fprintf(stderr, "No header?\n");
 		fclose(f);
-		return 0;
+		return nullptr;
 	}
 
-	imd = (struct imd *)malloc(sizeof(struct imd));
+	struct imd* imd = malloc(sizeof(struct imd));
 	imd->comment = strdup(buf);
-	imd->tracks = 0;
+	imd->tracks = nullptr;
 	imd->ntracks = 0;
 
 	/* Read tracks */
-	while ((c = fgetc(f)), (c != -1)) {
-		int x;
+	while (c = fgetc(f), c != -1) {
 		if (c < 0 || c > 5) {
 			fprintf(stderr,"Invalid mode byte?\n");
 			fclose(f);
 			free_imd(imd);
-			return 0;
+			return nullptr;
 		}
 //		printf("track\n");
-		track = (struct track *)malloc(sizeof(struct track));
-		track->data = 0;
-		track->map = 0;
-		track->next = 0;
+		struct track* track = malloc(sizeof(struct track));
+		track->data = nullptr;
+		track->map = nullptr;
+		track->next = nullptr;
 		track->mode = c;
 		c = fgetc(f);
 		if (c < 0 || c > 80) {
 			fprintf(stderr,"Invalid cylinder number\n");
 			fclose(f);
 			free_imd(imd);
-			return 0;
+			return nullptr;
 		}
 		track->cyl = c;
 		c = fgetc(f);
@@ -132,7 +125,7 @@ struct imd *read_imd(char *name)
 			fprintf(stderr,"Invalid head number\n");
 			fclose(f);
 			free_imd(imd);
-			return 0;
+			return nullptr;
 		}
 		track->head = c;
 		c = fgetc(f);
@@ -140,7 +133,7 @@ struct imd *read_imd(char *name)
 			fprintf(stderr,"Invalid number of sectors\n");
 			fclose(f);
 			free_imd(imd);
-			return 0;
+			return nullptr;
 		}
 		track->sects = c;
 		c = fgetc(f);
@@ -148,43 +141,43 @@ struct imd *read_imd(char *name)
 			fprintf(stderr,"Invalid sector size\n");
 			fclose(f);
 			free_imd(imd);
-			return 0;
+			return nullptr;
 		}
-		track->sec_size = (128 << c);
+		track->sec_size = 128 << c;
 		track->map = (unsigned char *)malloc(track->sects);
 		if (1 != fread(track->map, track->sects, 1, f)) {
 			fprintf(stderr,"Couldn't read sector map\n");
 			fclose(f);
 			free_imd(imd);
-			return 0;
+			return nullptr;
 		}
 		track->data = (unsigned char *)malloc(track->sects * track->sec_size);
-		for (x = 0; x != track->sects; ++x) {
+		for (int i = 0; i != track->sects; ++i) {
 			c = fgetc(f);
 			if (c < 0 || c > 8) {
 				fprintf(stderr,"Invalid sector type\n");
 				fclose(f);
 				free_imd(imd);
-				return 0;
+				return nullptr;
 			}
 			if (c & 1) {
-				if (1 != fread(track->data + x * track->sec_size, track->sec_size, 1, f)) {
+				if (1 != fread(track->data + i * track->sec_size, track->sec_size, 1, f)) {
 					fprintf(stderr,"Couldn't read sectors\n");
 					fclose(f);
 					free_imd(imd);
-					return 0;
+					return nullptr;
 				}
 			} else if (c == 0) {
-				memset(track->data + x * track->sec_size, 0, track->sec_size);
+				memset(track->data + i * track->sec_size, 0, track->sec_size);
 			} else {
 				c = fgetc(f);
 				if (c < 0) {
 					fprintf(stderr,"Couldn't compressed sector\n");
 					fclose(f);
 					free_imd(imd);
-					return 0;
+					return nullptr;
 				}
-				memset(track->data + x * track->sec_size, c, track->sec_size);
+				memset(track->data + i * track->sec_size, c, track->sec_size);
 			}
 		}
 		if (last) {
@@ -209,44 +202,36 @@ char *modes[] =
 	"5 (250 kbps MFM)"
 };
 
-void dump_imd(struct imd *imd)
+void dump_imd(const struct imd *imd)
 {
-	struct track *t;
 	printf("Comment = %s\n", imd->comment);
 	printf("%d tracks\n", imd->ntracks);
-	for (t = imd->tracks; t; t = t->next) {
-		int x;
+	for (const struct track* t = imd->tracks; t; t = t->next) {
 		printf("Cyl=%d Head=%d Sects=%d Sec_size=%d Mode=%s\n  Map:",
-			t->cyl, t->head, t->sects, t->sec_size, modes[t->mode]);
-		for(x = 0; x != t->sects; ++x)
+		       t->cyl, t->head, t->sects, t->sec_size, modes[t->mode]);
+		for(int x = 0; x != t->sects; ++x)
 			printf(" %d", t->map[x]);
 		printf("\n");
 	}
 }
 
-long imd_size(struct imd *imd)
+long imd_size(const struct imd *imd)
 {
 	long size = 0;
-	struct track *t;
-	for (t = imd->tracks; t; t = t->next) {
+	for (const struct track* t = imd->tracks; t; t = t->next) {
 		size += t->sec_size * t->sects;
 	}
 	return size;
 }
 
-int write_atr(struct imd *imd, char *dest_name, int logical, int sio)
+int write_atr(const struct imd *imd, char *dest_name, const int logical, const int sio)
 {
-	FILE *f;
-	struct track *t;
 	unsigned char header[16];
 	unsigned char buf[8192];
-	long size;
-	int sec_size;
-	int count;
-	count = 0;
+	int count = 0;
 
-	sec_size = imd->tracks->sec_size;
-	size = imd_size(imd);
+	const int sec_size = imd->tracks->sec_size;
+	long size = imd_size(imd);
 
 	printf("Sector size is %d\n", sec_size);
 
@@ -263,17 +248,16 @@ int write_atr(struct imd *imd, char *dest_name, int logical, int sio)
 		fprintf(stderr,"Invalid .imd file size = %ld bytes\n", size);
 		fprintf(stderr,"It must be multiple of %d\n", sec_size);
 		return 1;
-	} else {
-		printf("Disk size is %ldK\n", size / 1024);
 	}
+	printf("Disk size is %ldK\n", size / 1024);
 
-	f = fopen(dest_name, "rb");
+	FILE* f = fopen(dest_name, "rb");
 	if (f) {
-		char buf[80];
+		char strbuf[80];
 		fclose(f);
 		printf("%s already exists.  Overwrite (y,n)?", dest_name);
-		fgets(buf,sizeof(buf)-1,stdin);
-		if (buf[0] != 'y' && buf[0] != 'Y') {
+		fgets(strbuf,sizeof(strbuf)-1,stdin);
+		if (strbuf[0] != 'y' && strbuf[0] != 'Y') {
 			printf("Skipping...\n");
 			return 0;
 		}
@@ -292,16 +276,15 @@ int write_atr(struct imd *imd, char *dest_name, int logical, int sio)
 	header[0] = 0x96;
 	header[1] = 0x02;
 	header[4] = sec_size;
-	header[5] = (sec_size >> 8);
-	header[2] = (size >> 4);
-	header[3] = (size >> 12);
-	header[6] = (size >> 20);
+	header[5] = sec_size >> 8;
+	header[2] = size >> 4;
+	header[3] = size >> 12;
+	header[6] = size >> 20;
 
 	fwrite(header, 16, 1, f);
 
-	for (t = imd->tracks; t; t = t->next) {
-		int x;
-		for (x = 1; x != t->sects + 1; ++x) {
+	for (const struct track* t = imd->tracks; t; t = t->next) {
+		for (int x = 1; x != t->sects + 1; ++x) {
 			int y;
 			for (y = 0; y != t->sects; ++y)
 				if (t->map[y] == x)
@@ -325,19 +308,20 @@ int write_atr(struct imd *imd, char *dest_name, int logical, int sio)
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int main(const int argc, char *argv[])
 {
+	(void)argc;
+
 	int dump = 0;
 	int logical = 1;
 	int sio = 0;
 
-	int x;
 	int err = 0;
 	int did = 0;
 
 	/* Parse args */
 
-	for (x = 1; argv[x]; ++x) {
+	for (int x = 1; argv[x]; ++x) {
 		if (argv[x][0] == '-') {
 			if (!strcmp(argv[x], "--dump"))
 				dump = 1;

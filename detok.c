@@ -6,26 +6,26 @@
 
 int main(int argc, char *argv[])
 {
+    (void)argc;
+
     int x;
-    char *name = 0;
+    char *name = nullptr;
     FILE *f;
     unsigned char hdr[4];
-    int size;
-    int idx;
+    size_t size;
+    size_t idx;
     unsigned char *src;
     for (x = 1; argv[x]; ++x) {
         if (!strcmp(argv[x], "-h") || !strcmp(argv[x], "--help")) {
             printf("Detokenize Mac65 assembly source\n");
             printf("%s name\n", argv[0]);
             return 0;
-        } else {
-            if (name) {
-                printf("Syntax error\n");
-                return -1;
-            } else {
-                name = argv[x];
-            }
         }
+        if (name) {
+            printf("Syntax error\n");
+            return -1;
+        }
+        name = argv[x];
     }
     if (!name) {
         printf("Syntax error\n");
@@ -51,13 +51,12 @@ int main(int argc, char *argv[])
     }
     src = (unsigned char *)malloc(size);
     if (size != fread(src, 1, size, f)) {
-        printf("Couldn't read rest of file (size %d indicated in header)\n", size);
+        printf("Couldn't read rest of file (size %zu indicated in header)\n", size);
         return -1;
     }
     for (idx = 0; idx < size;) {
         char label[256];
-        int x;
-        int linum = (int)src[idx] + ((int)src[idx+1] << 8);
+        int i;
         char *tok = "";
         int typ = 0;
         int len = src[idx+2];
@@ -67,16 +66,16 @@ int main(int argc, char *argv[])
         len -= 3;
 
         /* Is there a label? */
-        if (len && (src[idx] & 0x80)) {
+        if (len && src[idx] & 0x80) {
             /* We have a label */
-            int ll = (src[idx] & 0x7F);
+            int ll = src[idx] & 0x7F;
             ++idx; --len;
-            for (x = 0; x != ll; ++x) {
-                label[x] = src[idx + x];
+            for (i = 0; i != ll; ++i) {
+                label[i] = src[idx + i];
             }
-            idx += x;
-            len -= x;
-            label[x] = 0;
+            idx += i;
+            len -= i;
+            label[i] = 0;
         }
 
         /* First token */
@@ -197,8 +196,8 @@ int main(int argc, char *argv[])
         } else if (typ ==2) { /* Comment */
             if (label[0])
                 printf("%s ", label);
-            for (x = 0; x != len; ++x)
-                putchar(src[idx + x]);
+            for (i = 0; i != len; ++i)
+                putchar(src[idx + i]);
             printf("\n");
             goto next;
         }
@@ -211,14 +210,14 @@ int main(int argc, char *argv[])
             /* Is there a string? */
             if (src[idx] & 0x80) {
                 /* We have a label */
-                int ll = (src[idx] & 0x7F);
+                int ll = src[idx] & 0x7F;
                 ++idx;
-                for (x = 0; x != ll; ++x) {
-                    label[x] = src[idx + x];
+                for (i = 0; i != ll; ++i) {
+                    label[i] = src[idx + i];
                 }
-                idx += x;
-                len -= x;
-                label[x] = 0;
+                idx += i;
+                len -= i;
+                label[i] = 0;
                 typ = 7;
             } else {
                 switch (src[idx++]) {
@@ -283,13 +282,13 @@ int main(int argc, char *argv[])
             if (typ == 0) {
                 printf("%s", tok);
             } else if (typ == 1) {
-                printf("%s%4.4X", tok, (int)src[idx] + 256 * ((int)src[idx + 1]));
+                printf("%s%4.4X", tok, (int)src[idx] + 256 * (int)src[idx + 1]);
                 idx += 2; len -= 2;
             } else if (typ == 2) {
                 printf("%s%2.2X", tok, (int)src[idx]);
                 idx += 1; len -= 1;
             } else if (typ == 3) {
-                printf("%s%d", tok, (int)src[idx] + 256 * ((int)src[idx + 1]));
+                printf("%s%d", tok, (int)src[idx] + 256 * (int)src[idx + 1]);
                 idx += 2; len -= 2;
             } else if (typ == 4) {
                 printf("%s%d", tok, (int)src[idx]);
@@ -299,11 +298,11 @@ int main(int argc, char *argv[])
                 idx += 1; len -= 1;
             } else if (typ == 6) {
                 putchar('\t');
-                for (x = 0; x != len; ++x) {
-                    putchar(src[idx + x]);
+                for (i = 0; i != len; ++i) {
+                    putchar(src[idx + i]);
                 }
-                idx += x;
-                len -= x;
+                idx += i;
+                len -= i;
             } else if (typ == 7) {
                 if (ismac) {
                     printf("%s	", label);

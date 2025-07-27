@@ -219,7 +219,7 @@ int data_next_low = DATA_NEXT_LOW;
 #define DD_DATA_BYTES 255
 int data_bytes = DATA_BYTES;
 
-void set_density(int dd)
+void set_density(const int dd)
 {
         if (dd) {
                 sector_size = DD_SECTOR_SIZE;
@@ -351,12 +351,11 @@ void putsect(unsigned char *buf, int sect)
 
 /* Count number of free sectors in a bitmap */
 
-int count_free(unsigned char *bitmap, int len)
+int count_free(const unsigned char *bitmap, int len)
 {
         int count = 0;
-        int x;
         while (len--) {
-                for (x = 1; x != 256; x *= 2) {
+                for (int x = 1; x != 256; x *= 2) {
                         if (*bitmap & x)
                                 ++count;
                 }
@@ -380,7 +379,7 @@ int fixit()
                 if (fgets(buf,sizeof(buf),stdin)) {
                         if (buf[0] == 'y' || buf[0] == 'Y')
                                 return 1;
-                        else if (buf[0] == 'n' || buf[0] == 'N')
+                        if (buf[0] == 'n' || buf[0] == 'N')
                                 return 0;
                 }
         }
@@ -388,7 +387,7 @@ int fixit()
 
 /* Get allocation bitmap */
 
-void getmap(unsigned char *bitmap, int check)
+void getmap(unsigned char *bitmap, const int check)
 {
         unsigned char vtoc[DD_SECTOR_SIZE];
         unsigned char vtoc2[DD_SECTOR_SIZE];
@@ -401,17 +400,17 @@ void getmap(unsigned char *bitmap, int check)
         memcpy(bitmap, vtoc + VTOC_BITMAP, SD_BITMAP_SIZE);
 
         if (check) {
-                int count = count_free(bitmap, SD_BITMAP_SIZE);
-                int vtoc_count = vtoc[VTOC_NUM_UNUSED] + (256 * vtoc[VTOC_NUM_UNUSED + 1]);
-                int vtoc_total = vtoc[VTOC_NUM_SECTS] + (256 * vtoc[VTOC_NUM_SECTS + 1]);
+                const int count = count_free(bitmap, SD_BITMAP_SIZE);
+                const int vtoc_count = vtoc[VTOC_NUM_UNUSED] + 256 * vtoc[VTOC_NUM_UNUSED + 1];
+                const int vtoc_total = vtoc[VTOC_NUM_SECTS] + 256 * vtoc[VTOC_NUM_SECTS + 1];
                 int expected_size;
                 printf("  Checking that VTOC current free sector count matches bitmap...\n");
                 if (count != vtoc_count) {
                         fprintf(stderr,"    ** It doesn't match: bitmap has %d free, but VTOC count is %d\n", count, vtoc_count);
                         status = 1;
                         if (fixit()) {
-                                vtoc[VTOC_NUM_UNUSED] = (0xFF & count);
-                                vtoc[VTOC_NUM_UNUSED + 1] = (0xFF & (count >> 8));
+                                vtoc[VTOC_NUM_UNUSED] = 0xFF & count;
+                                vtoc[VTOC_NUM_UNUSED + 1] = 0xFF & count >> 8;
                                 upd = 1;
                         }
                 } else {
@@ -426,8 +425,8 @@ void getmap(unsigned char *bitmap, int check)
                         fprintf(stderr,"    ** It's wrong, we found: %d\n", vtoc_total);
                         status = 1;
                         if (fixit()) {
-                                vtoc[VTOC_NUM_SECTS] = (0xFF & expected_size);
-                                vtoc[VTOC_NUM_SECTS + 1] = (0xFF & (expected_size >> 8));
+                                vtoc[VTOC_NUM_SECTS] = 0xFF & expected_size;
+                                vtoc[VTOC_NUM_SECTS + 1] = 0xFF & expected_size >> 8;
                                 upd = 1;
                         }
                 } else
@@ -463,15 +462,15 @@ void getmap(unsigned char *bitmap, int check)
                         ED_BITMAP_SIZE - SD_BITMAP_SIZE
                 );
                 if (check) {
-                        int count = count_free(bitmap + SD_BITMAP_SIZE, ED_BITMAP_SIZE - SD_BITMAP_SIZE);
-                        int vtoc2_count = vtoc2[VTOC2_NUM_UNUSED] + 256 * vtoc2[VTOC2_NUM_UNUSED + 1];
+                        const int count = count_free(bitmap + SD_BITMAP_SIZE, ED_BITMAP_SIZE - SD_BITMAP_SIZE);
+                        const int vtoc2_count = vtoc2[VTOC2_NUM_UNUSED] + 256 * vtoc2[VTOC2_NUM_UNUSED + 1];
                         printf("  Checking that VTOC2 current free sector count matches bitmap...\n");
                         if (count != vtoc2_count) {
                                 fprintf(stderr,"    ** It doesn't match: bitmap has %d free, but VTOC2 count is %d\n", count, vtoc2_count);
                                 status = 1;
                                 if (fixit()) {
-                                        vtoc2[VTOC2_NUM_UNUSED] = (count & 0xFF);
-                                        vtoc2[VTOC2_NUM_UNUSED + 1] = (0xFF & (count >> 8));
+                                        vtoc2[VTOC2_NUM_UNUSED] = count & 0xFF;
+                                        vtoc2[VTOC2_NUM_UNUSED + 1] = 0xFF & count >> 8;
                                         upd = 1;
                                 }
                         } else {
@@ -481,7 +480,6 @@ void getmap(unsigned char *bitmap, int check)
                                 printf("Saving VTOC2 fixes...\n");
                                 putsect(vtoc2, SECTOR_VTOC2);
                                 printf("  done.\n");
-                                upd = 0;
                                 fixes = 1;
                         }
                 }
@@ -490,10 +488,9 @@ void getmap(unsigned char *bitmap, int check)
 
 /* Write back allocation bitmap */
 
-void putmap(unsigned char *bitmap)
+void putmap(const unsigned char *bitmap)
 {
         unsigned char vtoc[DD_SECTOR_SIZE];
-        int count;
         unsigned char vtoc2[DD_SECTOR_SIZE];
 
         if (getsect(vtoc, SECTOR_VTOC)) {
@@ -503,9 +500,9 @@ void putmap(unsigned char *bitmap)
         memcpy(vtoc + VTOC_BITMAP, bitmap, SD_BITMAP_SIZE);
 
         /* Update free count */
-        count = count_free(bitmap, SD_BITMAP_SIZE);
+        int count = count_free(bitmap, SD_BITMAP_SIZE);
         vtoc[VTOC_NUM_UNUSED] = count;
-        vtoc[VTOC_NUM_UNUSED + 1] = (count >> 8);
+        vtoc[VTOC_NUM_UNUSED + 1] = count >> 8;
 
         putsect(vtoc, SECTOR_VTOC);
 
@@ -519,7 +516,7 @@ void putmap(unsigned char *bitmap)
                 /* Update free count */
                 count = count_free(bitmap + SD_BITMAP_SIZE, ED_BITMAP_SIZE - SD_BITMAP_SIZE);
                 vtoc2[VTOC2_NUM_UNUSED] = count;
-                vtoc2[VTOC2_NUM_UNUSED + 1] = (count >> 8);
+                vtoc2[VTOC2_NUM_UNUSED + 1] = count >> 8;
 
                 putsect(vtoc2, SECTOR_VTOC2);
         }
@@ -548,7 +545,7 @@ struct name
         int is_sys; /* Set if it's a .SYS file */
         int is_cm; /* Set if it's a .COM file */
 
-        
+
 
         /* From file itself */
         struct segment *segments;
@@ -556,7 +553,7 @@ struct name
 };
 
 /* Array of internal file names for formatting */
-struct name *names[(SECTOR_DIR_SIZE * SECTOR_SIZE) / ENTRY_SIZE];
+struct name *names[SECTOR_DIR_SIZE * SECTOR_SIZE / ENTRY_SIZE];
 int name_n;
 
 /* For qsort */
@@ -570,38 +567,34 @@ int comp(struct name **l, struct name **r)
 int find_empty_entry()
 {
         unsigned char buf[DD_SECTOR_SIZE];
-        int x;
-        for (x = SECTOR_DIR; x != SECTOR_DIR + SECTOR_DIR_SIZE; ++x) {
-                int y;
+        for (int x = SECTOR_DIR; x != SECTOR_DIR + SECTOR_DIR_SIZE; ++x) {
                 if (getsect(buf, x)) {
                         fprintf(stderr," (trying to read directory sector)\n");
                         exit(-1);
                 }
-                for (y = 0; y != SECTOR_SIZE; y += ENTRY_SIZE) {
-                        struct dirent *d = (struct dirent *)(buf + y);
+                for (int y = 0; y != SECTOR_SIZE; y += ENTRY_SIZE) {
+                        const struct dirent *d = (struct dirent *)(buf + y);
                         if (!(d->flag & FLAG_IN_USE_ED)) {
-                                return (x - SECTOR_DIR) * SECTOR_SIZE / ENTRY_SIZE + (y / ENTRY_SIZE);
+                                return (x - SECTOR_DIR) * SECTOR_SIZE / ENTRY_SIZE + y / ENTRY_SIZE;
                         }
                 }
         }
         return -1;
 }
 
-int lower(int c)
+int lower(const int c)
 {
         if (c >= 'A' && c <= 'Z')
                 return c - 'A' + 'a';
-        else
-                return c;
+        return c;
 }
 
 /* Convert file name from directory into UNIX zero-terminated C string name */
 
-char *getname(struct dirent *d)
+char *getname(const struct dirent *d)
 {
         static char s[50];
         int p = 0;
-        int r;
         int i;
         /* Get name */
         for (i = 0; i != sizeof(d->name); i++) {
@@ -611,7 +604,7 @@ char *getname(struct dirent *d)
         while (p && s[p - 1] == ' ') --p;
         /* Append '.' */
         s[p++] = '.';
-        r = p;
+        const int r = p;
         /* Get extension */
         for (i = 0; i != sizeof(d->suffix); i++) {
                 s[p++] = lower(d->suffix[i]);
@@ -627,11 +620,10 @@ char *getname(struct dirent *d)
 
 /* Write UNIX name into Atari directory entry */
 
-void putname(struct dirent *d, char *name)
+void putname(struct dirent *d, const char *name)
 {
-        int x;
         /* Copy file name into directory entry */
-        x = 0;
+        int x = 0;
         while (*name && *name != '.' && x < 8) {
                 if (*name >= 'a' && *name <= 'z')
                         d->name[x++] = *name++ - 'a' + 'A';
@@ -661,23 +653,21 @@ void putname(struct dirent *d, char *name)
 /* Find a file, return number of its first sector */
 /* If del is set, mark directory for deletion */
 
-int find_file(char *filename, int del, char *new_name)
+int find_file(const char *filename, const int del, const char *new_name)
 {
         unsigned char buf[DD_SECTOR_SIZE];
-        int x;
-        for (x = SECTOR_DIR; x != SECTOR_DIR + SECTOR_DIR_SIZE; ++x) {
-                int y;
+        for (int x = SECTOR_DIR; x != SECTOR_DIR + SECTOR_DIR_SIZE; ++x) {
                 if (getsect(buf, x)) {
                         fprintf(stderr," (trying to read directory)\n");
                         goto done;
                 }
-                for (y = 0; y != SECTOR_SIZE; y += ENTRY_SIZE) {
+                for (int y = 0; y != SECTOR_SIZE; y += ENTRY_SIZE) {
                         struct dirent *d = (struct dirent *)(buf + y);
                         /* OSS OS/A+ disks put junk after first never used directory entry */
                         if (!(d->flag & (FLAG_IN_USE_ED | FLAG_DELETED)))
                                 goto done;
                         if (d->flag & FLAG_IN_USE_ED) {
-                                char *s = getname(d);
+                                const char *s = getname(d);
                                 if (!strcmp(s, filename)) {
                                         if (del) {
                                                 d->flag = 0x80;
@@ -706,9 +696,6 @@ void read_file(int sector, FILE *f)
 
         do {
                 unsigned char buf[DD_SECTOR_SIZE];
-                int next;
-                int file_no;
-                int bytes;
 
                 if (count == 2048) {
                         fprintf(stderr," (file too long)\n");
@@ -722,16 +709,15 @@ void read_file(int sector, FILE *f)
                 }
                 ++count;
 
-                next = (int)buf[data_next_low] + ((int)(0x3 & buf[data_next_high]) << 8);
-                file_no = ((buf[data_file_num] >> 2) & 0x3F);
-                bytes = buf[data_bytes];
+                const int next = (int)buf[data_next_low] + ((0x3 & buf[data_next_high]) << 8);
+                int file_no = buf[data_file_num] >> 2 & 0x3F;
+                const int bytes = buf[data_bytes];
 
                 /* printf("Sector %d: next=%d, bytes=%d, file_no=%d, short=%d\n",
                         sector, next, bytes, file_no, short_sect); */
-                
+
                 if (cvt_ending) {
-                        int x;
-                        for (x = 0; x != bytes; ++x)
+                        for (int x = 0; x != bytes; ++x)
                                 if (buf[x] == 0x9b) {
                                         buf[x] = '\n';
                                 }
@@ -747,48 +733,46 @@ void read_file(int sector, FILE *f)
 
 void cat(char *name)
 {
-        int sector = find_file(name, 0, NULL);
+        const int sector = find_file(name, 0, nullptr);
         if (sector == -1) {
                 fprintf(stderr,"File '%s' not found\n", name);
                 exit(-1);
-        } else {
-                /* printf("Found file.  First sector of file is %d\n", sector); */
-                read_file(sector, stdout);
         }
+        /* printf("Found file.  First sector of file is %d\n", sector); */
+        read_file(sector, stdout);
 }
 
 /* get a file from the disk */
 
 int get_file(char *atari_name, char *local_name)
 {
-        int sector = find_file(atari_name, 0, NULL);
+        const int sector = find_file(atari_name, 0, nullptr);
         if (sector == -1) {
                 fprintf(stderr,"File '%s' not found\n", atari_name);
                 return -1;
-        } else {
-                FILE *f = fopen(local_name, "w");
-                if (!f) {
-                        fprintf(stderr,"Couldn't open local file '%s'\n", local_name);
-                        return -1;
-                }
-                /* printf("Found file.  First sector of file is %d\n", sector); */
-                read_file(sector, f);
-                if (fclose(f)) {
-                        fprintf(stderr,"Couldn't close local file '%s'\n", local_name);
-                        return -1;
-                }
-                return status;
         }
+        FILE *f = fopen(local_name, "w");
+        if (!f) {
+                fprintf(stderr,"Couldn't open local file '%s'\n", local_name);
+                return -1;
+        }
+        /* printf("Found file.  First sector of file is %d\n", sector); */
+        read_file(sector, f);
+        if (fclose(f)) {
+                fprintf(stderr,"Couldn't close local file '%s'\n", local_name);
+                return -1;
+        }
+        return status;
 }
 
 /* Mark a sector as allocated or free */
 
-void mark_space(unsigned char *bitmap, int start, int alloc)
+void mark_space(unsigned char *bitmap, const int start, const int alloc)
 {
         if (alloc) {
                 bitmap[start >> 3] &= ~(1 << (7 - (start & 7)));
         } else {
-                bitmap[start >> 3] |= (1 << (7 - (start & 7)));
+                bitmap[start >> 3] |= 1 << (7 - (start & 7));
         }
 }
 
@@ -802,9 +786,6 @@ int del_file(int sector)
 
         do {
                 unsigned char buf[DD_SECTOR_SIZE];
-                int next;
-                int file_no;
-                int bytes;
 
                 if (count == 2048) {
                         fprintf(stderr," (file too long)\n");
@@ -816,9 +797,9 @@ int del_file(int sector)
                 }
                 ++count;
 
-                next = (int)buf[data_next_low] + ((int)(0x3 & buf[data_next_high]) << 8);
-                file_no = ((buf[data_file_num] >> 2) & 0x3F);
-                bytes = buf[data_bytes];
+                const int next = (int)buf[data_next_low] + ((0x3 & buf[data_next_high]) << 8);
+                int file_no = buf[data_file_num] >> 2 & 0x3F;
+                int bytes = buf[data_bytes];
 
                 /* printf("Sector %d: next=%d, bytes=%d, file_no=%d, short=%d\n", sector, next, bytes, file_no, short_sect); */
 
@@ -833,34 +814,28 @@ int del_file(int sector)
 
 /* Delete file name */
 
-int rm(char *name, int ignore)
+int rm(char *name, const int ignore)
 {
-        int first_sect = find_file(name, 1, NULL);
+        const int first_sect = find_file(name, 1, nullptr);
         if (first_sect != -1) {
-                if (del_file(first_sect)) {
-                        fprintf(stderr,"Error deleting file '%s'\n", name);
-                        return -1;
-                } else {
-                        return status;
-                }
-        } else {
-                if (!ignore) {
-                        fprintf(stderr,"File '%s' not found\n", name);
-                        status = 1;
-                }
-                return -1;
+                del_file(first_sect);
+                return status;
         }
+        if (!ignore) {
+                fprintf(stderr,"File '%s' not found\n", name);
+                status = 1;
+        }
+        return -1;
 }
 
 /* Count free sectors */
 
-int amount_free(unsigned char *bitmap)
+int amount_free(const unsigned char *bitmap)
 {
         int total = 0;
-        int x;
 
-        for (x = 0; x != disk_size; ++x) {
-                if (bitmap[(x >> 3)] & (1 << (7 - (x & 7))))
+        for (int x = 0; x != disk_size; ++x) {
+                if (bitmap[(x >> 3)] & 1 << (7 - (x & 7)))
                         ++total;
         }
         return total;
@@ -870,28 +845,25 @@ int amount_free(unsigned char *bitmap)
 
 int do_free(void)
 {
-        int amount;
         unsigned char bitmap[ED_BITMAP_SIZE];
         getmap(bitmap, 0);
-        amount = amount_free(bitmap);
+        const int amount = amount_free(bitmap);
         printf("%d free sectors, %d free bytes\n", amount, amount * sector_size);
         return 0;
 }
 
 /* Check a single file */
 
-int check_file(struct dirent *d, int y, int x, char *map, char *name[])
+int check_file(struct dirent *d, const int y, const int x, char *map, char *name[])
 {
         unsigned char fbuf[DD_SECTOR_SIZE];
         char *filename = strdup(getname(d));
         int upddir = 0;
-        int sector;
-        int sects;
         int count = 0;
         int upd = 0;
-        int file_no = (y / ENTRY_SIZE) + ((x - SECTOR_DIR) * SECTOR_SIZE / ENTRY_SIZE);
-        sector = (d->start_hi << 8) + d->start_lo;
-        sects = (d->count_hi << 8) + d->count_lo;
+        const int file_no = y / ENTRY_SIZE + (x - SECTOR_DIR) * SECTOR_SIZE / ENTRY_SIZE;
+        int sector = (d->start_hi << 8) + d->start_lo;
+        const int sects = (d->count_hi << 8) + d->count_lo;
         printf("Checking %s (file_no %d)\n", filename, file_no);
         if (d->flag & FLAG_OPENED) {
                 printf("  ** Warning: file is marked as opened\n");
@@ -901,8 +873,6 @@ int check_file(struct dirent *d, int y, int x, char *map, char *name[])
                 }
         }
         do {
-                int next;
-                int sector_file_no;
                 ++count;
                 if (count == 2048) {
                         fprintf(stderr," (file too long)\n");
@@ -921,29 +891,27 @@ int check_file(struct dirent *d, int y, int x, char *map, char *name[])
                         fprintf(stderr,"  ** Warning: Infinite linked list detected\n");
                         status = 1;
                         break;
-                } else {
-                        int dsize;
-                        map[sector] = file_no;
-                        name[sector] = filename;
-                        next = (int)fbuf[data_next_low] + ((int)(0x3 & fbuf[data_next_high]) << 8);
-                        sector_file_no = ((int)fbuf[data_file_num] >> 2);
-                        if (sector_file_no != file_no) {
-                                fprintf(stderr,"  ** Warning: Sector %d claims to belong to file %d\n", sector, sector_file_no);
-                                status = 1;
-                                if (fixit()) {
-                                        fbuf[data_file_num] = (fbuf[data_file_num] & 0x3) | (file_no << 2);
-                                        upd = 1;
-                                }
+                }
+                map[sector] = file_no;
+                name[sector] = filename;
+                const int next = (int)fbuf[data_next_low] + ((0x3 & fbuf[data_next_high]) << 8);
+                const int sector_file_no = (int)fbuf[data_file_num] >> 2;
+                if (sector_file_no != file_no) {
+                        fprintf(stderr,"  ** Warning: Sector %d claims to belong to file %d\n", sector, sector_file_no);
+                        status = 1;
+                        if (fixit()) {
+                                fbuf[data_file_num] = (fbuf[data_file_num] & 0x3) | (file_no << 2);
+                                upd = 1;
                         }
-                        dsize = (int)fbuf[data_bytes];
-                        if (next) {
-                                if (dsize != data_size) {
-                                        fprintf(stderr, "  ** Warning: Sector %d is short\n", sector);
-                                }
-                        } else {
-                                if (dsize == 0) {
-                                        fprintf(stderr, "  ** Warning: Sector %d (last sector of file) is empty\n", sector);
-                                }
+                }
+                const int dsize = fbuf[data_bytes];
+                if (next) {
+                        if (dsize != data_size) {
+                                fprintf(stderr, "  ** Warning: Sector %d is short\n", sector);
+                        }
+                } else {
+                        if (dsize == 0) {
+                                fprintf(stderr, "  ** Warning: Sector %d (last sector of file) is empty\n", sector);
                         }
                 }
                 if (upd) {
@@ -958,8 +926,8 @@ int check_file(struct dirent *d, int y, int x, char *map, char *name[])
                        sects, count, filename);
                 status = 1;
                 if (fixit()) {
-                        d->count_hi = (0xFF & (count >> 8));
-                        d->count_lo = (0xFF & count);
+                        d->count_hi = 0xFF & count >> 8;
+                        d->count_lo = 0xFF & count;
                         upddir = 1;
                 }
         }
@@ -974,8 +942,6 @@ int do_check()
         unsigned char bitmap[ED_BITMAP_SIZE];
         unsigned char buf[DD_SECTOR_SIZE];
         int x;
-        int total;
-        int ok;
         int found_eod = 0;
         char map[ED_DISK_SIZE];
         char *name[ED_DISK_SIZE];
@@ -990,7 +956,7 @@ int do_check()
         /* Mark all as free */
         for (x = 0; x != ED_DISK_SIZE; ++x) {
                 map[x] = -1;
-                name[x] = 0;
+                name[x] = nullptr;
         }
 
         /* Mark non-existent sector 0 as allocated */
@@ -1012,13 +978,12 @@ int do_check()
 
         /* Step through each file */
         for (x = SECTOR_DIR; x != SECTOR_DIR + SECTOR_DIR_SIZE; ++x) {
-                int y;
                 int upd = 0;
                 if (getsect(buf, x)) {
                         fprintf(stderr," (reading directory)\n");
                         exit(-1);
                 }
-                for (y = 0; y != SECTOR_SIZE; y += ENTRY_SIZE) {
+                for (int y = 0; y != SECTOR_SIZE; y += ENTRY_SIZE) {
                         struct dirent *d = (struct dirent *)(buf + y);
                         if (!(d->flag & (FLAG_IN_USE_ED | FLAG_DELETED))) {
                                 found_eod = 1;
@@ -1039,7 +1004,7 @@ int do_check()
                         fixes = 1;
                 }
         }
-        total = 0;
+        int total = 0;
         for (x = 0; x != disk_size; ++x) {
                 if (map[x] != -1) {
                         ++total;
@@ -1055,10 +1020,10 @@ int do_check()
         printf("Checking VTOC header...\n");
         getmap(bitmap, 1);
         printf("Compare VTOC bitmap with reconstructed bitmap from files...\n");
-        ok = 1;
+        int ok = 1;
         for (x = 0; x != disk_size; ++x) {
                 int is_alloc;
-                if (bitmap[x >> 3] & (1 << (7 - (x & 7))))
+                if (bitmap[x >> 3] & 1 << (7 - (x & 7)))
                         is_alloc = 0;
                 else
                         is_alloc = 1;
@@ -1103,7 +1068,7 @@ int alloc_space(unsigned char *bitmap, int *list, int sects)
         while (sects) {
                 int x;
                 for (x = last_sector; x != disk_size; ++x) {
-                        if (bitmap[x >> 3] & (1 << (7 - (x & 7)))) {
+                        if (bitmap[x >> 3] & 1 << (7 - (x & 7))) {
                                 *list++ = x;
                                 last_sector = x + 1;
                                 bitmap[x >> 3] &= ~(1 << (7 - (x & 7)));
@@ -1122,19 +1087,17 @@ int alloc_space(unsigned char *bitmap, int *list, int sects)
 
 /* Write a file */
 
-int write_file(unsigned char *bitmap, unsigned char *buf, int sects, int file_no, int size)
+int write_file(unsigned char *bitmap, const unsigned char *buf, const int sects, const int file_no, int size)
 {
-        int x, ed_file;
         unsigned char bf[DD_SECTOR_SIZE];
-        int list[ED_DISK_SIZE];
-        memset(list, 0, sizeof(list));
+        int list[ED_DISK_SIZE] = {0};
 
-        ed_file = alloc_space(bitmap, list, sects);
+        const int ed_file = alloc_space(bitmap, list, sects);
         if (ed_file == -1)
                 return -1;
 
-        for (x = 0; x != sects; ++x) {
-                memcpy(bf, buf + (data_size) * x, data_size);
+        for (int x = 0; x != sects; ++x) {
+                memcpy(bf, buf + data_size * x, data_size);
                 if (x + 1 == sects) {
                         // Last sector
                         bf[data_next_low] = 0;
@@ -1142,20 +1105,20 @@ int write_file(unsigned char *bitmap, unsigned char *buf, int sects, int file_no
                         bf[data_bytes] = size;
                 } else {
                         bf[data_next_low] = list[x + 1];
-                        bf[data_next_high] = (list[x + 1] >> 8);
+                        bf[data_next_high] = list[x + 1] >> 8;
                         bf[data_bytes] = data_size;
                 }
-                bf[data_file_num] |= (file_no << 2);
+                bf[data_file_num] |= file_no << 2;
                 size -= data_size;
                 // printf("Writing sector %d %d %d %d\n", list[x], bf[125], bf[126], bf[127]);
                 putsect(bf, list[x]);
         }
-        return (ed_file == 1) ? -list[0] : list[0];
+        return ed_file == 1 ? -list[0] : list[0];
 }
 
 /* Write directory entry */
 
-int write_dir(int file_no, char *name, int first_sect, int sects)
+int write_dir(const int file_no, const char *name, int first_sect, const int sects)
 {
         struct dirent d[1];
         unsigned char dir_buf[DD_SECTOR_SIZE];
@@ -1169,13 +1132,13 @@ int write_dir(int file_no, char *name, int first_sect, int sects)
         /* Copy file name into directory entry */
         putname(d, name);
 
-        d->start_hi = (first_sect >> 8);
+        d->start_hi = first_sect >> 8;
         d->start_lo = first_sect;
-        d->count_hi = (sects >> 8);
+        d->count_hi = sects >> 8;
         d->count_lo = sects;
         /* DOS complains on some file operations if FLAG_DOS2 is not there: */
         d->flag = (ed_file ? FLAG_OPENED : FLAG_IN_USE) | FLAG_DOS2;
-        
+
         if (getsect(dir_buf, SECTOR_DIR + file_no / (SECTOR_SIZE / ENTRY_SIZE))) {
                 fprintf(stderr, " (trying to read directory)\n");
                 exit(-1);
@@ -1190,14 +1153,8 @@ int write_dir(int file_no, char *name, int first_sect, int sects)
 int put_file(char *local_name, char *atari_name)
 {
         FILE *f = fopen(local_name, "r");
-        long size;
-        long up;
         long x;
-        unsigned char *buf;
         unsigned char bitmap[ED_BITMAP_SIZE];
-        int first_sect;
-        int file_no;
-        int num_sects;
         if (!f) {
                 fprintf(stderr, "Couldn't open '%s'\n", local_name);
                 return -1;
@@ -1208,7 +1165,7 @@ int put_file(char *local_name, char *atari_name)
                 fclose(f);
                 return -1;
         }
-        size = ftell(f);
+        const long size = ftell(f);
         if (size < 0)  {
                 fprintf(stderr, "Couldn't get file size of '%s'\n", local_name);
                 status = 1;
@@ -1217,11 +1174,11 @@ int put_file(char *local_name, char *atari_name)
         }
         rewind(f);
         // Round up to a multiple of (DATA_SIZE)
-        up = size + (data_size) - 1;
-        up -= up % (data_size);
-        num_sects = up / data_size;
-        buf = (unsigned char *)malloc(up);
-        if (size != fread(buf, 1, size, f)) {
+        long up = size + data_size - 1;
+        up -= up % data_size;
+        const int num_sects = up / data_size;
+        unsigned char* buf = malloc(up);
+        if ((size_t)size != fread(buf, 1, (size_t)size, f)) {
                 fprintf(stderr, "Couldn't read file '%s'\n", local_name);
                 status = 1;
                 fclose(f);
@@ -1248,13 +1205,13 @@ int put_file(char *local_name, char *atari_name)
         getmap(bitmap, 0);
 
         /* Prepare directory entry */
-        file_no = find_empty_entry();
+        const int file_no = find_empty_entry();
         if (file_no == -1) {
                 return -1;
         }
 
         /* Allocate space and write file */
-        first_sect = write_file(bitmap, buf, num_sects, file_no, size);
+        const int first_sect = write_file(bitmap, buf, num_sects, file_no, size);
 
         if (first_sect == -1) {
                 fprintf(stderr, "Couldn't write file\n");
@@ -1262,11 +1219,7 @@ int put_file(char *local_name, char *atari_name)
                 return -1;
         }
 
-        if (write_dir(file_no, atari_name, first_sect, num_sects)) {
-                fprintf(stderr, "Couldn't write directory entry\n");
-                status = 1;
-                return -1;
-        }
+        write_dir(file_no, atari_name, first_sect, num_sects);
 
         /* Success! */
         putmap(bitmap);
@@ -1275,9 +1228,9 @@ int put_file(char *local_name, char *atari_name)
 
 /* Rename a file */
 
-int atari_rename(char *old_name, char *new_name)
+int atari_rename(const char *old_name, char *new_name)
 {
-        if (find_file(new_name, 0, NULL) != -1) {
+        if (find_file(new_name, 0, nullptr) != -1) {
                 fprintf(stderr, "'%s' already exists\n", new_name);
                 return -1;
         }
@@ -1292,12 +1245,8 @@ void get_info(struct name *nam)
         unsigned char membuf[65536];
         size_t total = 0;
         int sector = nam->sector;
-        struct segment *lastseg = 0;
         do {
                 unsigned char buf[DD_SECTOR_SIZE];
-                int next;
-                int file_no;
-                int bytes;
 
                 if (total + 125 >= sizeof(bigbuf)) {
                         fprintf(stderr, " (file %s too long)\n", nam->name);
@@ -1309,9 +1258,8 @@ void get_info(struct name *nam)
                         break;
                 }
 
-                next = (int)buf[data_next_low] + ((int)(0x3 & buf[data_next_high]) << 8);
-                file_no = ((buf[data_file_num] >> 2) & 0x3F);
-                bytes = buf[data_bytes];
+                const int next = (int)buf[data_next_low] + ((0x3 & buf[data_next_high]) << 8);
+                const int bytes = buf[data_bytes];
 
                 if (bytes && total + bytes <= sizeof(bigbuf)) {
                         memcpy(bigbuf + total, buf, bytes);
@@ -1323,14 +1271,15 @@ void get_info(struct name *nam)
         } while(sector);
 
         nam->size = total;
-        nam->segments = 0;
+        nam->segments = nullptr;
 
         // Look at file...
-        if (total >= 2 && bigbuf[0] == 0xFF && bigbuf[1] == 0xFF) { /* Magic number for binary file */
-                size_t idx;
+        if (total >= 2 && bigbuf[0] == 0xFF && bigbuf[1] == 0xFF) {
+                struct segment *lastseg = nullptr;
+                /* Magic number for binary file */
                 int ok = 1;
                 int segsize;
-                for (idx = 0; ok && idx < total; idx += segsize) {
+                for (size_t idx = 0; ok && idx < total; idx += segsize) {
                         segsize = 0;
                         ok = 0;
                         /* Each segment can optionally start with 0xFFFF, skip it */
@@ -1340,9 +1289,8 @@ void get_info(struct name *nam)
                         }
                         /* Get header */
                         if (idx + 4 <= total) {
-                                struct segment *segment;
-                                int first = (int)bigbuf[idx + 0] + ((int)bigbuf[idx + 1] << 8);
-                                int last = (int)bigbuf[idx + 2] + ((int)bigbuf[idx + 3] << 8);
+                                const int first = (int)bigbuf[idx + 0] + ((int)bigbuf[idx + 1] << 8);
+                                const int last = (int)bigbuf[idx + 2] + ((int)bigbuf[idx + 3] << 8);
                                 segsize = last - first + 1;
                                 idx += 4;
                                 ok = 1;
@@ -1351,10 +1299,10 @@ void get_info(struct name *nam)
                                 }
                                 /* Ignore short segments (DUP.SYS loader will not skip them) */
                                 if (segsize > 1) {
-                                        segment = (struct segment *)malloc(sizeof(struct segment));
+                                        struct segment* segment = malloc(sizeof(struct segment));
                                         segment->start = first;
                                         segment->size = segsize;
-                                        segment->next = 0;
+                                        segment->next = nullptr;
                                         segment->init = -1;
                                         segment->run = -1;
                                         if (!nam->segments)
@@ -1382,34 +1330,31 @@ void get_info(struct name *nam)
  * If all_flg is set, included system files in
  */
 
-void read_dir(int all_flg, int info_flg)
+void read_dir(const int all_flg, const int info_flg)
 {
         unsigned char buf[DD_SECTOR_SIZE];
-        int x;
-        for (x = SECTOR_DIR; x != SECTOR_DIR + SECTOR_DIR_SIZE; ++x) {
-                int y;
+        for (int x = SECTOR_DIR; x != SECTOR_DIR + SECTOR_DIR_SIZE; ++x) {
                 if (getsect(buf, x)) {
                         fprintf(stderr," (trying to read directory)\n");
                         break;
                 }
-                for (y = 0; y != SECTOR_SIZE; y += ENTRY_SIZE) {
-                        struct dirent *d = (struct dirent *)(buf + y);
+                for (int y = 0; y != SECTOR_SIZE; y += ENTRY_SIZE) {
+                        const struct dirent *d = (struct dirent *)(buf + y);
 
                         if (!(d->flag & (FLAG_IN_USE_ED | FLAG_DELETED)))
                                 goto done;
 
                         if (d->flag & FLAG_IN_USE_ED) {
-                                struct name *nam;
-                                char *s = getname(d);
-                                nam = (struct name *)malloc(sizeof(struct name));
+                                const char *s = getname(d);
+                                struct name* nam = malloc(sizeof(struct name));
                                 nam->name = strdup(s);
                                 if (d->flag & FLAG_LOCKED)
                                         nam->locked = 1;
                                 else
                                         nam->locked = 0;
-                                nam->sector = d->start_lo + (d->start_hi * 256);
-                                nam->sects = d->count_lo + (d->count_hi * 256);
-                                nam->segments = 0;
+                                nam->sector = d->start_lo + d->start_hi * 256;
+                                nam->sects = d->count_lo + d->count_hi * 256;
+                                nam->segments = nullptr;
                                 nam->size = -1;
                                 if (info_flg)
                                         get_info(nam);
@@ -1419,7 +1364,7 @@ void read_dir(int all_flg, int info_flg)
                                 else
                                         nam->is_sys = 0;
 
-                                if ((all_flg || !nam->is_sys))
+                                if (all_flg || !nam->is_sys)
                                         names[name_n++] = nam;
                         }
                 }
@@ -1436,11 +1381,10 @@ void read_dir(int all_flg, int info_flg)
         } \
 } while (0)
 
-void atari_dir(int all, int full, int single)
+void atari_dir(const int all, const int full, const int single)
 {
-        int x, y;
-        int rows;
-        int cols = (80 / 13);
+        int x;
+        constexpr int cols = 80 / 13;
         read_dir(all, 1);
 
         qsort(names, name_n, sizeof(struct name *), (int (*)(const void *, const void *))comp);
@@ -1451,16 +1395,14 @@ void atari_dir(int all, int full, int single)
                 printf("\n");
                 for (x = 0; x != name_n; ++x) {
                         char linebuf[100];
-                        int ofst;
                         int extra = 0;
-                        struct segment *seg;
                         sprintf(linebuf, "-r%c%c%c %6d (%3d) %-13s",
-                               (names[x]->locked ? '-' : 'w'),
-                               (names[x]->is_cm ? 'x' : '-'),
-                               (names[x]->is_sys ? 's' : '-'),
-                               names[x]->size, names[x]->sects, names[x]->name);
-                        ofst = strlen(linebuf) + 1;
-                        for (seg = names[x]->segments; seg; seg = seg->next) {
+                                names[x]->locked ? '-' : 'w',
+                                names[x]->is_cm ? 'x' : '-',
+                                names[x]->is_sys ? 's' : '-',
+                                names[x]->size, names[x]->sects, names[x]->name);
+                        const int ofst = strlen(linebuf) + 1;
+                        for (const struct segment* seg = names[x]->segments; seg; seg = seg->next) {
                                 if (!extra) {
                                         strcat(linebuf, " (");
                                         extra = 1;
@@ -1490,19 +1432,18 @@ void atari_dir(int all, int full, int single)
                 do_free();
                 printf("\n");
         } else if (single) {
-                int x;
-                for (x = 0; x != name_n; ++x) {
-                        printf("%s\n", names[x]->name);
+                for (int i = 0; i != name_n; ++i) {
+                        printf("%s\n", names[i]->name);
                 }
         } else {
 
                 /* Rows of 12 names each ordered like ls */
 
-                rows = (name_n + cols - 1) / cols;
+                const int rows = (name_n + cols - 1) / cols;
 
-                for (y = 0; y != rows; ++y) {
+                for (int y = 0; y != rows; ++y) {
                         for (x = 0; x != cols; ++x) {
-                                int n = y + x * rows;
+                                const int n = y + x * rows;
                                 /* printf("%11d  ", n); */
                                 if (n < name_n)
                                         printf("%-12s ", names[n]->name);
@@ -1514,12 +1455,12 @@ void atari_dir(int all, int full, int single)
         }
 }
 
-int mkfs(char *disk_name, int type, char* boot_sectors_file_path)
+int mkfs(char *disk_name, const int type, char* boot_sectors_file_path)
 {
         unsigned char hdr[16];
         unsigned char bf[256];
         unsigned char bitmap[ED_BITMAP_SIZE];
-        int size;
+        int size = 0;
         int n;
         disk = fopen(disk_name, "w+");
         if (!disk) {
@@ -1572,10 +1513,10 @@ int mkfs(char *disk_name, int type, char* boot_sectors_file_path)
         /* VTOC */
         bf[0] = 2;
         if (disk_size == ED_DISK_SIZE) {
-                bf[1] = (255 & 1010);
+                bf[1] = 255 & 1010;
                 bf[2] = 1010/256;
         } else {
-                bf[1] = (255 & 707);
+                bf[1] = 255 & 707;
                 bf[2] = 707/256;
         }
         putsect(bf, SECTOR_VTOC);
@@ -1597,8 +1538,8 @@ int mkfs(char *disk_name, int type, char* boot_sectors_file_path)
                 }
                 n=0;
                 while (n++, !feof(boot_sectors_file)) {
-                        size = ( n < 3 ? SECTOR_SIZE : sector_size);
-                        size = fread(bf, size, 1, boot_sectors_file);
+                        size = n < 3 ? SECTOR_SIZE : sector_size;
+                        fread(bf, size, 1, boot_sectors_file);
                         putsect(bf, n);
                 }
                 fclose(boot_sectors_file);
@@ -1607,13 +1548,12 @@ int mkfs(char *disk_name, int type, char* boot_sectors_file_path)
         return 0;
 }
 
-int should_extract(char* filename, int list_start, int argc, char* argv[])
+int should_extract(const char* filename, const int list_start, const int argc, char* argv[])
 {
-    int i;
-    if (!list_start) {
+        if (!list_start) {
         return 1;   //  no list
     }
-    for (i = list_start; i < argc; ++i) {
+    for (int i = list_start; i < argc; ++i) {
         if(!strcmp(filename, argv[i])) {
             return 1;
         }
@@ -1621,15 +1561,12 @@ int should_extract(char* filename, int list_start, int argc, char* argv[])
     return 0;
 }
 
-int main(int argc, char *argv[])
+int main(const int argc, char *argv[])
 {
         int all = 0;
         int full = 0;
         int single = 0;
-        long size;
-        int x;
-        char *disk_name;
-        x = 1;
+        int x = 1;
         if (x == argc || !strcmp(argv[x], "--help") || !strcmp(argv[x], "-h")) {
                 printf("\nAtari DOS 2.0s, DOS 2.0d and DOS 2.5 diskette access\n");
                 printf("\n");
@@ -1664,12 +1601,12 @@ int main(int argc, char *argv[])
                 printf("                                    Write a new filesystem\n");
                 return -1;
         }
-        disk_name = argv[x++];
+        char* disk_name = argv[x++];
 
         if (argv[x] && !strcmp(argv[x], "mkfs")) {
                 /* Create a filesystem */
                 int type = 0;
-                char* boot_sectors_file_path = NULL;
+                char* boot_sectors_file_path = nullptr;
                 ++x;
                 if (argv[x] && !strcmp(argv[x], "dos2.0s"))
                         type = 1;
@@ -1700,7 +1637,7 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "Couldn't seek disk?\n");
                 return -1;
         }
-        size = ftell(disk);
+        const long size = ftell(disk);
 //	if (size - 16 == 40 * 18 * 128) {
         if (size - 16 < 1024 * 128) {
                 /* Minimum size for enhanced density is 1024 sectors */
@@ -1729,9 +1666,8 @@ int main(int argc, char *argv[])
         /* Directory options */
         dir:
         while (x != argc && argv[x][0] == '-') {
-                int y;
-                for (y = 1;argv[x][y];++y) {
-                        int opt = argv[x][y];
+                for (int y = 1;argv[x][y];++y) {
+                        const int opt = argv[x][y];
                         switch (opt) {
                                 case 'l': full = 1; break;
                                 case 'a': all = 1; break;
@@ -1746,17 +1682,22 @@ int main(int argc, char *argv[])
                 /* Just print a directory listing */
                 atari_dir(all, full, single);
                 return status;
-        } else if (!strcmp(argv[x], "ls")) {
+        }
+        if (!strcmp(argv[x], "ls")) {
                 ++x;
                 goto dir;
-        } else if (!strcmp(argv[x], "free")) {
+        }
+        if (!strcmp(argv[x], "free")) {
                 return do_free();
-        } else if (!strcmp(argv[x], "check")) {
+        }
+        if (!strcmp(argv[x], "check")) {
                 return do_check();
-        } else if (!strcmp(argv[x], "fix")) {
+        }
+        if (!strcmp(argv[x], "fix")) {
                 fix = 1;
                 return do_check();
-        } else if (!strcmp(argv[x], "cat")) {
+        }
+        if (!strcmp(argv[x], "cat")) {
                 ++x;
                 if (x != argc && !strcmp(argv[x], "-l")) {
                         cvt_ending = 1;
@@ -1765,13 +1706,11 @@ int main(int argc, char *argv[])
                 if (x == argc) {
                         fprintf(stderr,"Missing file name to cat\n");
                         return -1;
-                } else {
-                        cat(argv[x++]);
-                        return status;
                 }
-        } else if (!strcmp(argv[x], "get")) {
-                char *local_name;
-                char *atari_name;
+                cat(argv[x]);
+                return status;
+        }
+        if (!strcmp(argv[x], "get")) {
                 ++x;
                 if (x != argc && !strcmp(argv[x], "-l")) {
                         cvt_ending = 1;
@@ -1781,60 +1720,60 @@ int main(int argc, char *argv[])
                         printf("Missing file name to get\n");
                         return -1;
                 }
-                atari_name = argv[x];
-                local_name = atari_name;
+                char* atari_name = argv[x];
+                char* local_name = atari_name;
                 if (x + 1 != argc)
                         local_name = argv[++x];
                 return get_file(atari_name, local_name);
-        } else if (!strcmp(argv[x], "x")) {
+        }
+        if (!strcmp(argv[x], "x")) {
                 int all_flg = 0;
                 int status = 0;
                 int list_start = 0;
-                char* out_dir = NULL;
-                int n;
+                const char* out_dir = nullptr;
                 char* out_filename;
                 while (++x != argc) {
-                    if ('-' == argv[x][0]) {
-                        if (!strcmp(argv[x], "-a")) {
-                            all_flg = 1;
-                        } else if(!strcmp(argv[x], "-l")) {
-                            cvt_ending = 1;
-                        } else if(!strcmp(argv[x], "-o")) {
-                            ++x;
-                            if (x != argc) {
-                                out_dir = argv[x];
-                            }
+                        if ('-' == argv[x][0]) {
+                                if (!strcmp(argv[x], "-a")) {
+                                        all_flg = 1;
+                                } else if(!strcmp(argv[x], "-l")) {
+                                        cvt_ending = 1;
+                                } else if(!strcmp(argv[x], "-o")) {
+                                        ++x;
+                                        if (x != argc) {
+                                                out_dir = argv[x];
+                                        }
+                                }
+                        } else {
+                                list_start = x;
+                                break;
                         }
-                    } else {
-                        list_start = x;
-                        break;
-                    }
                 }
                 read_dir(all_flg, 0);
-                for (n = 0; n != name_n; ++n) {
+                for (int n = 0; n != name_n; ++n) {
                         if (!should_extract(names[n]->name, list_start, argc, argv)) {
-                            continue;
+                                continue;
                         }
                         if (out_dir) {
-                            int out_dir_len = strlen(out_dir);
-                            out_filename = (char*)malloc(out_dir_len + strlen(names[n]->name) + 2);
-                            strcat(out_filename, out_dir);
-                            if ('/' != out_dir[out_dir_len - 1]) {
-                                strcat(out_filename, "/");
-                            }
-                            strcat(out_filename, names[n]->name);
+                                const int out_dir_len = strlen(out_dir);
+                                out_filename = (char*)malloc(out_dir_len + strlen(names[n]->name) + 2);
+                                strcat(out_filename, out_dir);
+                                if ('/' != out_dir[out_dir_len - 1]) {
+                                        strcat(out_filename, "/");
+                                }
+                                strcat(out_filename, names[n]->name);
                         } else {
-                            out_filename = names[n]->name;
+                                out_filename = names[n]->name;
                         }
                         printf("extracting %s\n", names[n]->name);
                         status |= get_file(names[n]->name, out_filename);
                         if (out_dir) {
-                            free(out_filename);
+                                free(out_filename);
                         }
                 }
                 return status;
-        } else if (!strcmp(argv[x], "put")) {
-                char *local_name;
+        }
+        if (!strcmp(argv[x], "put")) {
                 char *atari_name;
                 ++x;
                 if (x != argc && !strcmp(argv[x], "-l")) {
@@ -1845,7 +1784,7 @@ int main(int argc, char *argv[])
                         fprintf(stderr, "Missing file name to put\n");
                         return -1;
                 }
-                local_name = argv[x];
+                char* local_name = argv[x];
                 if (strrchr(local_name, '/'))
                         atari_name = strrchr(local_name, '/') + 1;
                 else
@@ -1854,7 +1793,8 @@ int main(int argc, char *argv[])
                 if (x + 1 != argc)
                         atari_name = argv[++x];
                 return put_file(local_name, atari_name);
-        } else if (!strcmp(argv[x], "w")) {
+        }
+        if (!strcmp(argv[x], "w")) {
                 int status = 0;
                 ++x;
                 while (argv[x]) {
@@ -1863,38 +1803,32 @@ int main(int argc, char *argv[])
                         ++x;
                 }
                 return status;
-        } else if (!strcmp(argv[x], "mv")) {
-                char *old_name;
-                char *new_name;
+        }
+        if (!strcmp(argv[x], "mv")) {
                 ++x;
                 if (!argv[x]) {
                         fprintf(stderr,"missing name\n");
                         return -1;
-                } else {
-                        old_name = argv[x];
-                        ++x;
                 }
+                const char* old_name = argv[x];
+                ++x;
                 if (!argv[x]) {
                         fprintf(stderr,"missing name\n");
                         return -1;
-                } else {
-                        new_name = argv[x];
-                        ++x;
                 }
+                char* new_name = argv[x];
+                ++x;
                 return atari_rename(old_name, new_name);
-        } else if (!strcmp(argv[x], "rm")) {
-                char *name;
+        }
+        if (!strcmp(argv[x], "rm")) {
                 ++x;
                 if (x == argc) {
                         printf("Missing name to delete\n");
                         return -1;
-                } else {
-                        name = argv[x];
                 }
+                char* name = argv[x];
                 return rm(name, 0);
-        } else {
-                printf("Unknown command '%s'\n", argv[x]);
-                return -1;
         }
-        return 0;
+        printf("Unknown command '%s'\n", argv[x]);
+        return -1;
 }
