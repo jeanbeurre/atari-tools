@@ -14,6 +14,7 @@
 * [detok](#detok)<br>
   * [Compiling instructions](#detok-compiling-instructions)<br>
   * [Syntax](#detok-syntax)<br>
+* [License](#license)<br>
 
 Use ATR to manipulate .atr disk image files.
 
@@ -423,3 +424,6 @@ ASCII and prints the result on the standard output.
 
 	detok source.m65
 
+# License
+
+This project is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 1, or (at your option) any later version. Please see the LICENCE file for details.
