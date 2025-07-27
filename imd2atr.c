@@ -80,9 +80,9 @@ struct imd *read_imd(char *name)
 	printf("Converting %s\n", name);
 
 	/* Read header */
-	size_t x = 0;
+	int x = 0;
 	while (c = fgetc(f), c != -1 && c != 0x1A) {
-		if (x < sizeof(buf) - 1)
+		if (x < (int)(sizeof(buf) - 1))
 			buf[x++] = c;
 	}
 	buf[x] = 0;
