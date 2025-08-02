@@ -16,8 +16,6 @@
  * 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-/* Atari disk access */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -299,7 +299,7 @@ allocation map.  Out of reach sector 1024 is used for VTOC2.  Sectors
 
 Note: on new disks, DOS 2.5 allocates sector 720 even though it is not used
 for anything.  I think this is to enhance backward compatibility with DOS 2.0s
-(where some programs might use sector 720, knowing that the OS will not normally use
+(where some programs might use sector 720, knowing that the OS will not normally
 use it).
 
 Boot sectors = 1..3.  These are allocated and written on newly formatted disks even if there is no dos.sys written.
@@ -388,7 +388,7 @@ Kennedy's .ATR (Atari) disk image file format.
 You could use this to read Atari 800 disks using an IBM PC floppy
 drive with ImageDisk.
 
-## IMD2ATR Compiling instructions
+## IMD2ATR/ATR2IMD Compiling instructions
 
 I use the DJGPP 32-bit GNU-C based compiler: http://www.delorie.com/djgpp/
 (so you need a 386 or better machine to run these on)
