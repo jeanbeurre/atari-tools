@@ -1,6 +1,8 @@
 .*.swp
 *.o
 *.atr
+*.zip
 atr
 /build/
 /bin/
+/_CPack_Packages/
