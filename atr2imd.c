@@ -72,19 +72,19 @@ struct atr *read_atr(char *name, const int force_ed, const int force_dd)
 	/* Sector size from header */
 	if (!f) {
 		fprintf(stderr, "Couldn't open %s\n", name);
-		return nullptr;
+		return NULL;
 	}
 	if (1 != fread(header, 16, 1, f)) {
 		fprintf(stderr, "Header missing from %s\n", name);
 		fclose(f);
-		return nullptr;
+		return NULL;
 	}
 	if (header[0] != 0x96 || header[1] != 0x02) {
 		fprintf(stderr, "Warning.. magic number is not 0x0296\n");
 	}
 	struct atr* atr = malloc(sizeof(struct atr));
-	atr->map = nullptr;
-	atr->data =nullptr;
+	atr->map = NULL;
+	atr->data = NULL;
 
 	/* Get image size from header */
 	atr->size = ((long)header[2] + ((long)header[3] << 8) + ((long)header[6] << 16)) * 0x10;
@@ -102,7 +102,7 @@ struct atr *read_atr(char *name, const int force_ed, const int force_dd)
 		fprintf(stderr, "Unknown sector size %d\n", sec_size);
 		free_atr(atr);
 		fclose(f);
-		return nullptr;
+		return NULL;
 	}
 
 	/* Get actual image size, don't trust size from header */
@@ -116,7 +116,7 @@ struct atr *read_atr(char *name, const int force_ed, const int force_dd)
 		fprintf(stderr, "Couldn't allocate space for image\n");
 		free_atr(atr);
 		fclose(f);
-		return nullptr;
+		return NULL;
 	}
 
 	/* Read image */
@@ -124,7 +124,7 @@ struct atr *read_atr(char *name, const int force_ed, const int force_dd)
 		fprintf(stderr, "Error reading from file\n");
 		free_atr(atr);
 		fclose(f);
-		return nullptr;
+		return NULL;
 	}
 	/* Success! */
 	fclose(f);
@@ -193,7 +193,7 @@ struct atr *read_atr(char *name, const int force_ed, const int force_dd)
 		fprintf(stderr,"Unknown format\n");
 		free(atr->data);
 		free(atr);
-		return nullptr;
+		return NULL;
 	}
 	return atr;
 }
@@ -292,7 +292,7 @@ int main(const int argc, char *argv[])
 
 	int err = 0;
 	int did = 0;
-	char *comment = nullptr;
+	char *comment = NULL;
 	int force_ed = 0;
 	int force_dd = 0;
 
@@ -347,7 +347,7 @@ int main(const int argc, char *argv[])
 			free_atr(atr);
 
 			/* Reset options */
-			comment = nullptr;
+			comment = NULL;
 			did = 1;
 		}
 	}

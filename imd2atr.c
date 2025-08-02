@@ -70,11 +70,11 @@ struct imd *read_imd(char *name)
 	char buf[1024];
 	int c;
 	FILE *f = fopen(name, "rb");
-	struct track* last = nullptr;
+	struct track* last = NULL;
 
 	if (!f) {
 		fprintf(stderr, "Couldn't open %s\n", name);
-		return nullptr;
+		return NULL;
 	}
 
 	printf("Converting %s\n", name);
@@ -90,12 +90,12 @@ struct imd *read_imd(char *name)
 	if (!x) {
 		fprintf(stderr, "No header?\n");
 		fclose(f);
-		return nullptr;
+		return NULL;
 	}
 
 	struct imd* imd = malloc(sizeof(struct imd));
 	imd->comment = strdup(buf);
-	imd->tracks = nullptr;
+	imd->tracks = NULL;
 	imd->ntracks = 0;
 
 	/* Read tracks */
@@ -104,20 +104,20 @@ struct imd *read_imd(char *name)
 			fprintf(stderr,"Invalid mode byte?\n");
 			fclose(f);
 			free_imd(imd);
-			return nullptr;
+			return NULL;
 		}
 //		printf("track\n");
 		struct track* track = malloc(sizeof(struct track));
-		track->data = nullptr;
-		track->map = nullptr;
-		track->next = nullptr;
+		track->data = NULL;
+		track->map = NULL;
+		track->next = NULL;
 		track->mode = c;
 		c = fgetc(f);
 		if (c < 0 || c > 80) {
 			fprintf(stderr,"Invalid cylinder number\n");
 			fclose(f);
 			free_imd(imd);
-			return nullptr;
+			return NULL;
 		}
 		track->cyl = c;
 		c = fgetc(f);
@@ -125,7 +125,7 @@ struct imd *read_imd(char *name)
 			fprintf(stderr,"Invalid head number\n");
 			fclose(f);
 			free_imd(imd);
-			return nullptr;
+			return NULL;
 		}
 		track->head = c;
 		c = fgetc(f);
@@ -133,7 +133,7 @@ struct imd *read_imd(char *name)
 			fprintf(stderr,"Invalid number of sectors\n");
 			fclose(f);
 			free_imd(imd);
-			return nullptr;
+			return NULL;
 		}
 		track->sects = c;
 		c = fgetc(f);
@@ -141,7 +141,7 @@ struct imd *read_imd(char *name)
 			fprintf(stderr,"Invalid sector size\n");
 			fclose(f);
 			free_imd(imd);
-			return nullptr;
+			return NULL;
 		}
 		track->sec_size = 128 << c;
 		track->map = (unsigned char *)malloc(track->sects);
@@ -149,7 +149,7 @@ struct imd *read_imd(char *name)
 			fprintf(stderr,"Couldn't read sector map\n");
 			fclose(f);
 			free_imd(imd);
-			return nullptr;
+			return NULL;
 		}
 		track->data = (unsigned char *)malloc(track->sects * track->sec_size);
 		for (int i = 0; i != track->sects; ++i) {
@@ -158,14 +158,14 @@ struct imd *read_imd(char *name)
 				fprintf(stderr,"Invalid sector type\n");
 				fclose(f);
 				free_imd(imd);
-				return nullptr;
+				return NULL;
 			}
 			if (c & 1) {
 				if (1 != fread(track->data + i * track->sec_size, track->sec_size, 1, f)) {
 					fprintf(stderr,"Couldn't read sectors\n");
 					fclose(f);
 					free_imd(imd);
-					return nullptr;
+					return NULL;
 				}
 			} else if (c == 0) {
 				memset(track->data + i * track->sec_size, 0, track->sec_size);
@@ -175,7 +175,7 @@ struct imd *read_imd(char *name)
 					fprintf(stderr,"Couldn't compressed sector\n");
 					fclose(f);
 					free_imd(imd);
-					return nullptr;
+					return NULL;
 				}
 				memset(track->data + i * track->sec_size, c, track->sec_size);
 			}

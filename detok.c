@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     (void)argc;
 
     int x;
-    char *name = nullptr;
+    char *name = NULL;
     FILE *f;
     unsigned char hdr[4];
     size_t size;

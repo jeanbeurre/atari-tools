@@ -960,7 +960,7 @@ int do_check()
         /* Mark all as free */
         for (x = 0; x != ED_DISK_SIZE; ++x) {
                 map[x] = -1;
-                name[x] = nullptr;
+                name[x] = NULL;
         }
 
         /* Mark non-existent sector 0 as allocated */
