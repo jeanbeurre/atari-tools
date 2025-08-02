@@ -42,7 +42,7 @@ things:
 * That total sectors and free sectors fields in VTOC are correct (can fix)
 * Reconstruct the allocation bitmap from files and verify that it matches VTOC bitmap (can fix)
 
-ATR is for Cygwin or Linux (add 'b' flag to fopen()s for Windows).
+ATR is for Cygwin, WSL or Linux.
 
 ## Image formats
 
