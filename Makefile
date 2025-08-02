@@ -1,12 +1,21 @@
+BIN = bin
 
-atr : atr.c
-	gcc -std=c23 -W -Wall -pedantic -o atr atr.c
-atr2imd : atr2imd.c
-	gcc -std=c23 -W -Wall -pedantic -o atr2imd atr2imd.c
-imd2atr : imd2atr.c
-	gcc -std=c23 -W -Wall -pedantic -o imd2atr imd2atr.c
-detok: detok.c
-	gcc -std=c23 -W -Wall -pedantic -o detok detok.c
 all: atr atr2imd imd2atr detok
+
+$(BIN):
+	mkdir -p $@
+
+atr: atr.c | $(BIN)
+	gcc -std=c23 -W -Wall -pedantic -o $(BIN)/$@ atr.c
+
+atr2imd: atr2imd.c | $(BIN)
+	gcc -std=c23 -W -Wall -pedantic -o $(BIN)/$@ atr2imd.c
+
+imd2atr: imd2atr.c | $(BIN)
+	gcc -std=c23 -W -Wall -pedantic -o $(BIN)/$@ imd2atr.c
+
+detok: detok.c | $(BIN)
+	gcc -std=c23 -W -Wall -pedantic -o $(BIN)/$@ detok.c
+
 clean:
-	@rm -f atr *.o *.exe
+	@rm -rf $(BIN)

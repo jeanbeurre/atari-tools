@@ -2,3 +2,5 @@
 *.o
 *.atr
 atr
+/build/
+/bin/
