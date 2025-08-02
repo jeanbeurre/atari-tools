@@ -21,6 +21,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#define CROSS_FOPEN_MODE(mode) mode "b"
+#else
+#define CROSS_FOPEN_MODE(mode) mode
+#endif
+
 int main(int argc, char *argv[])
 {
     int x;
@@ -48,7 +54,7 @@ int main(int argc, char *argv[])
         printf("Syntax error\n");
         return -1;
     }
-    f = fopen(name, "r");
+    f = fopen(name, CROSS_FOPEN_MODE("r"));
     if (!f) {
         printf("Couldn't open %s\n", name);
         return -1;

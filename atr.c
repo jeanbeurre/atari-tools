@@ -22,6 +22,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#define CROSS_FOPEN_MODE(mode) mode "b"
+#else
+#define CROSS_FOPEN_MODE(mode) mode
+#endif
+
 /* Disks: .ATR file has a 16 byte header, then data:
  *
  *  DOS 2.0S single density (40 tracks, 18 sectors, 128 byte sectors): 92160 bytes
@@ -548,7 +554,7 @@ struct name
         int is_sys; /* Set if it's a .SYS file */
         int is_cm; /* Set if it's a .COM file */
 
-        
+
 
         /* From file itself */
         struct segment *segments;
@@ -728,7 +734,7 @@ void read_file(int sector, FILE *f)
 
                 /* printf("Sector %d: next=%d, bytes=%d, file_no=%d, short=%d\n",
                         sector, next, bytes, file_no, short_sect); */
-                
+
                 if (cvt_ending) {
                         int x;
                         for (x = 0; x != bytes; ++x)
@@ -766,7 +772,7 @@ int get_file(char *atari_name, char *local_name)
                 fprintf(stderr,"File '%s' not found\n", atari_name);
                 return -1;
         } else {
-                FILE *f = fopen(local_name, "w");
+                FILE *f = fopen(local_name, CROSS_FOPEN_MODE("w"));
                 if (!f) {
                         fprintf(stderr,"Couldn't open local file '%s'\n", local_name);
                         return -1;
@@ -1175,7 +1181,7 @@ int write_dir(int file_no, char *name, int first_sect, int sects)
         d->count_lo = sects;
         /* DOS complains on some file operations if FLAG_DOS2 is not there: */
         d->flag = (ed_file ? FLAG_OPENED : FLAG_IN_USE) | FLAG_DOS2;
-        
+
         if (getsect(dir_buf, SECTOR_DIR + file_no / (SECTOR_SIZE / ENTRY_SIZE))) {
                 fprintf(stderr, " (trying to read directory)\n");
                 exit(-1);
@@ -1189,7 +1195,7 @@ int write_dir(int file_no, char *name, int first_sect, int sects)
 
 int put_file(char *local_name, char *atari_name)
 {
-        FILE *f = fopen(local_name, "r");
+        FILE *f = fopen(local_name, CROSS_FOPEN_MODE("r"));
         long size;
         long up;
         long x;
@@ -1521,7 +1527,7 @@ int mkfs(char *disk_name, int type, char* boot_sectors_file_path)
         unsigned char bitmap[ED_BITMAP_SIZE];
         int size;
         int n;
-        disk = fopen(disk_name, "w+");
+        disk = fopen(disk_name, CROSS_FOPEN_MODE("w+"));
         if (!disk) {
                 fprintf(stderr, "Couldn't open '%s'\n", disk_name);
                 return -1;
@@ -1590,7 +1596,7 @@ int mkfs(char *disk_name, int type, char* boot_sectors_file_path)
         mark_space(bitmap, 720, 1); /* Reserved */
         putmap(bitmap);
         if (boot_sectors_file_path != NULL) {
-                FILE* boot_sectors_file = fopen(boot_sectors_file_path, "rb");
+                FILE* boot_sectors_file = fopen(boot_sectors_file_path, CROSS_FOPEN_MODE("rb"));
                 if (!boot_sectors_file) {
                         fprintf(stderr, "Couldn't open '%s'\n", boot_sectors_file_path);
                         return -1;
@@ -1689,7 +1695,7 @@ int main(int argc, char *argv[])
         }
 
         /* Open disk image */
-        disk = fopen(disk_name, "r+");
+        disk = fopen(disk_name, CROSS_FOPEN_MODE("r+"));
         if (!disk) {
                 fprintf(stderr, "Couldn't open '%s'\n", disk_name);
                 return -1;
